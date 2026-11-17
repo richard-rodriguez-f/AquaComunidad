@@ -1,0 +1,707 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AquaComunidad — Gestión Comunitaria del Agua</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div id="root"></div>
+
+  <script>
+    const ICONS = {
+      home: '<path d="m3 11 9-8 9 8" /><path d="M5 10v10h14V10M9 20v-6h6v6" />',
+      users: '<circle cx="9" cy="8" r="3" /><path d="M3 20v-2a6 6 0 0 1 12 0v2M16 5a3 3 0 0 1 0 6M17 14a5 5 0 0 1 4 5v1" />',
+      droplet: '<path d="M12 2S5 10 5 15a7 7 0 0 0 14 0c0-5-7-13-7-13Z" />',
+      share: '<circle cx="18" cy="5" r="3" /><circle cx="6" cy="12" r="3" /><circle cx="18" cy="19" r="3" /><path d="m8.7 10.7 6.6-4.4M8.7 13.3l6.6 4.4" />',
+      history: '<path d="M3 12a9 9 0 1 0 3-6.7L3 8" /><path d="M3 3v5h5M12 7v5l3 2" />',
+      shield: '<path d="M12 3 4 6v5c0 5 3.4 8.6 8 10 4.6-1.4 8-5 8-10V6l-8-3Z" /><path d="M9 12h6M12 9v6" />',
+      chart: '<path d="M4 20V10M10 20V4M16 20v-7M22 20H2" />',
+      sync: '<path d="M20 7h-5V2M4 17h5v5" /><path d="M5.7 8A7 7 0 0 1 18 5l2 2M18.3 16A7 7 0 0 1 6 19l-2-2" />',
+      settings: '<circle cx="12" cy="12" r="3" /><path d="M19.4 15a2 2 0 0 0 .4 2.2l.1.1-2.6 2.6-.1-.1a2 2 0 0 0-2.2-.4 2 2 0 0 0-1.2 1.8V21h-3.6v-.2A2 2 0 0 0 9 19a2 2 0 0 0-2.2.4l-.1.1-2.6-2.6.1-.1a2 2 0 0 0 .4-2.2A2 2 0 0 0 2.8 13H2v-3h.8A2 2 0 0 0 4.6 8.4a2 2 0 0 0-.4-2.2l-.1-.1 2.6-2.6.1.1A2 2 0 0 0 9 4a2 2 0 0 0 1.2-1.8V2h3.6v.2A2 2 0 0 0 15 4a2 2 0 0 0 2.2-.4l.1-.1 2.6 2.6-.1.1a2 2 0 0 0-.4 2.2 2 2 0 0 0 1.8 1.6h.8v3h-.8a2 2 0 0 0-1.8 2Z" />',
+      bell: '<path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4" />',
+      gauge: '<path d="M4 17a9 9 0 1 1 16 0" /><path d="m12 13 4-4M7 17h10" />',
+      send: '<path d="m22 2-7 20-4-9-9-4 20-7Z" /><path d="M22 2 11 13" />',
+      arrow: '<path d="m15 18-6-6 6-6" />',
+      menu: '<path d="M4 7h16M4 12h16M4 17h16" />',
+      logout: '<path d="M10 17l5-5-5-5M15 12H3M14 3h6v18h-6" />',
+      wifi: '<path d="M5 12.5a10 10 0 0 1 14 0M8.5 16a5 5 0 0 1 7 0" /><circle cx="12" cy="20" r="1" />',
+      offline: '<path d="m3 3 18 18M8.5 16a5 5 0 0 1 4.8-1.3M5 12.5a10 10 0 0 1 3-2M14 10.2a10 10 0 0 1 5 2.3" />',
+      check: '<path d="m5 12 4 4L19 6" />',
+      plus: '<path d="M12 5v14M5 12h14" />'
+    };
+
+    function icon(name, size = 20) {
+      return '<svg width="' + size + '" height="' + size + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">' + (ICONS[name] || '') + '</svg>';
+    }
+
+    const state = {
+      mode: "web",
+      profile: null,
+      loggedIn: false,
+      accessStep: "welcome",
+      screen: "dashboard",
+      trail: [],
+      mobileMenu: false,
+      online: true,
+      toast: "",
+      water: 12450,
+      capacity: 20000,
+      reserve: 2350,
+      reserveCapacity: 4000,
+      familyConsumption: 420,
+      selectedFamily: "Familia Huamán",
+      searchFamily: "",
+      families: [
+        { name: "Familia Huamán", person: "Luis Huamán", members: 5, quota: 520, sector: "Sector Norte" },
+        { name: "Familia Quispe", person: "Rosa Quispe", members: 4, quota: 420, sector: "Sector Centro" },
+        { name: "Familia Mamani", person: "Elena Mamani", members: 6, quota: 620, sector: "Sector Sur" },
+        { name: "Familia Flores", person: "Daniel Flores", members: 3, quota: 320, sector: "Sector Norte" }
+      ],
+      movements: [
+        { id: 1, date: "18 jun 2025", type: "Distribución", detail: "Familia Huamán", amount: 520, direction: "out", status: "Sincronizado" },
+        { id: 2, date: "17 jun 2025", type: "Consumo esencial", detail: "Puesto de salud", amount: 180, direction: "out", status: "Sincronizado" },
+        { id: 3, date: "15 jun 2025", type: "Abastecimiento", detail: "Ingreso al reservorio", amount: 8000, direction: "in", status: "Sincronizado" }
+      ]
+    };
+
+    const NAVS = {
+      admin: [
+        ["dashboard", "Inicio", "home"],
+        ["families", "Familias", "users"],
+        ["supply", "Abastecimiento", "droplet"],
+        ["distribution", "Distribución", "share"],
+        ["history", "Historial", "history"],
+        ["reserve", "Reserva esencial", "shield"],
+        ["projection", "Proyección y alertas", "chart"],
+        ["sync", "Sincronización", "sync"],
+        ["settings", "Configuración", "settings"]
+      ],
+      family: [
+        ["family-home", "Inicio", "home"],
+        ["availability", "Disponibilidad", "droplet"],
+        ["quota", "Mi cuota", "gauge"],
+        ["family-consumption", "Consumo", "chart"],
+        ["family-history", "Historial", "history"],
+        ["notices", "Avisos", "bell"]
+      ],
+      service: [
+        ["service-home", "Inicio", "home"],
+        ["my-reserve", "Mi reserva", "shield"],
+        ["service-consumption", "Registrar consumo", "droplet"],
+        ["request", "Solicitar agua", "send"],
+        ["service-history", "Historial", "history"]
+      ]
+    };
+
+    function notify(msg) {
+      state.toast = msg;
+      render();
+      setTimeout(function() {
+        state.toast = "";
+        render();
+      }, 3000);
+    }
+
+    function go(next) {
+      if (next !== state.screen) state.trail.push(state.screen);
+      state.screen = next;
+      state.mobileMenu = false;
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      render();
+    }
+
+    function back() {
+      const prev = state.trail.pop();
+      if (prev) {
+        state.screen = prev;
+        render();
+      }
+    }
+
+    function addMovement(type, detail, amount, direction) {
+      state.movements.unshift({
+        id: Date.now(),
+        date: "Hoy",
+        type: type,
+        detail: detail,
+        amount: amount,
+        direction: direction,
+        status: state.online ? "Sincronizado" : "Pendiente"
+      });
+    }
+
+    function fmt(num) {
+      return Number(num).toLocaleString("es-PE");
+    }
+
+    function badge(text, tone) {
+      tone = tone || "blue";
+      return '<span class="badge badge-' + tone + '"><span class="badge-dot"></span>' + text + '</span>';
+    }
+
+    function progress(val, tone) {
+      tone = tone || "blue";
+      const pct = Math.min(100, Math.max(0, val));
+      return '<div class="progress"><span class="progress-' + tone + '" style="width:' + pct + '%"></span></div>';
+    }
+
+    function renderMovements(list, showAllBtn) {
+      let rows = '<div class="empty">No hay movimientos registrados.</div>';
+      if (list.length) {
+        rows = list.map(function(m) {
+          const ic = m.direction === "in" ? "plus" : m.direction === "out" ? "droplet" : "send";
+          const sign = m.direction === "in" ? "+" : m.direction === "out" ? "−" : "";
+          const stTone = m.status === "Sincronizado" ? "green" : "amber";
+          return '<div class="movement">' +
+            '<span class="movement-icon ' + m.direction + '">' + icon(ic) + '</span>' +
+            '<div><strong>' + m.type + '</strong><small>' + m.detail + '</small></div>' +
+            '<div class="movement-date"><span>' + m.date + '</span>' + badge(m.status, stTone) + '</div>' +
+            '<strong class="' + m.direction + '">' + sign + fmt(m.amount) + ' L</strong>' +
+          '</div>';
+        }).join("");
+      }
+
+      return '<section class="panel">' +
+        '<div class="panel-heading">' +
+          '<div><span class="eyebrow">Actividad</span><h2>Movimientos recientes</h2></div>' +
+          (showAllBtn ? '<button class="text-button" onclick="go(\'history\')">Ver historial →</button>' : '') +
+        '</div>' +
+        '<div class="movement-list">' + rows + '</div>' +
+      '</section>';
+    }
+
+    function renderAccess() {
+      if (state.accessStep === "welcome") {
+        return '<main class="access">' +
+          '<section class="access-hero">' +
+            '<div class="hero-rings"><span></span><span></span></div>' +
+            '<div class="hero-content">' +
+              '<div class="access-logo"><span class="brand-mark large">' + icon("droplet", 28) + '</span><strong>AquaComunidad</strong></div>' +
+              '<span class="eyebrow light">Gestión comunitaria del agua</span>' +
+              '<h1>El agua de nuestra comunidad, clara y al alcance de todos.</h1>' +
+              '<p>Organiza el abastecimiento, la distribución y el cuidado del agua de manera sencilla, incluso sin conexión.</p>' +
+              '<div class="hero-stat">' + icon("shield") + '<div><strong>Información segura y compartida</strong><small>Para familias, líderes y servicios esenciales</small></div></div>' +
+            '</div>' +
+          '</section>' +
+          '<section class="access-panel">' +
+            '<div class="access-card">' +
+              '<span class="eyebrow">Bienvenido</span>' +
+              '<h2>Ingresa a tu comunidad</h2>' +
+              '<p>Prototipo de validación para la Comunidad Santa Rosa.</p>' +
+              '<label class="field"><span>Código de comunidad</span><input value="SANTA-ROSA-01" /></label>' +
+              '<label class="field"><span>Clave de acceso</span><input type="password" value="123456" /></label>' +
+              '<button class="btn btn-primary" onclick="state.accessStep=\'profiles\'; render()">Continuar</button>' +
+              '<div class="offline-note">' + icon("offline", 18) + '<span>Puedes consultar y registrar información sin conexión.</span></div>' +
+            '</div>' +
+          '</section>' +
+        '</main>';
+      }
+
+      return '<main class="access">' +
+        '<section class="access-hero">' +
+          '<div class="hero-rings"><span></span><span></span></div>' +
+          '<div class="hero-content">' +
+            '<div class="access-logo"><span class="brand-mark large">' + icon("droplet", 28) + '</span><strong>AquaComunidad</strong></div>' +
+            '<span class="eyebrow light">Gestión comunitaria del agua</span>' +
+            '<h1>El agua de nuestra comunidad, clara y al alcance de todos.</h1>' +
+            '<p>Selecciona un rol para evaluar las funcionalidades de la plataforma.</p>' +
+          '</div>' +
+        '</section>' +
+        '<section class="access-panel">' +
+          '<div class="access-card">' +
+            '<button class="back-link" onclick="state.accessStep=\'welcome\'; render()">' + icon("arrow", 18) + ' Volver</button>' +
+            '<span class="eyebrow">Selecciona tu perfil</span>' +
+            '<h2>¿Cómo participas en la comunidad?</h2>' +
+            '<p>Accederás a las herramientas correspondientes a tu responsabilidad.</p>' +
+            '<button class="profile-option" onclick="enterProfile(\'admin\')">' +
+              '<span class="option-icon">' + icon("users") + '</span>' +
+              '<span><strong>Líder comunitario</strong><small>Gestionar agua, familias y distribución</small></span><span>→</span>' +
+            '</button>' +
+            '<button class="profile-option" onclick="enterProfile(\'family\')">' +
+              '<span class="option-icon">' + icon("home") + '</span>' +
+              '<span><strong>Jefe de familia</strong><small>Consultar cuota, disponibilidad e historial</small></span><span>→</span>' +
+            '</button>' +
+            '<button class="profile-option" onclick="enterProfile(\'service\')">' +
+              '<span class="option-icon">' + icon("shield") + '</span>' +
+              '<span><strong>Servicio esencial</strong><small>Gestionar reserva del puesto de salud</small></span><span>→</span>' +
+            '</button>' +
+          '</div>' +
+        '</section>' +
+      '</main>';
+    }
+
+    function renderScreen() {
+      const waterPct = Math.round((state.water / state.capacity) * 100);
+      const reservePct = Math.round((state.reserve / state.reserveCapacity) * 100);
+      const days = Math.max(1, Math.floor(state.water / 1050));
+      const pending = state.movements.filter(function(m) { return m.status === "Pendiente"; }).length;
+      const s = state.screen;
+
+      if (state.profile === "admin") {
+        if (s === "dashboard") {
+          return '<div class="content">' +
+            '<div class="page-title"><div class="title-group"><div><span class="eyebrow">Comunidad Santa Rosa</span><h1>Buenos días, María</h1><p>Estado general del sistema hídrico comunitario.</p></div></div></div>' +
+            '<div class="alert alert-info">' + icon("wifi") + '<div><strong>Información comunitaria actualizada</strong><span>' + (pending ? 'Tienes ' + pending + ' registro(s) pendiente(s) de sincronizar.' : 'Todos los registros están sincronizados.') + '</span></div>' + badge(pending ? pending + ' pendiente' : 'Al día', pending ? 'amber' : 'green') + '</div>' +
+            '<div class="stats-grid">' +
+              '<button class="stat-card stat-blue" onclick="go(\'projection\')"><span class="stat-icon">' + icon("droplet") + '</span><span class="stat-copy"><span class="stat-label">Agua disponible</span><strong>' + fmt(state.water) + ' L</strong><small>' + waterPct + '% del reservorio</small></span></button>' +
+              '<button class="stat-card stat-' + (days < 7 ? 'red' : 'green') + '" onclick="go(\'projection\')"><span class="stat-icon">' + icon("gauge") + '</span><span class="stat-copy"><span class="stat-label">Disponibilidad estimada</span><strong>' + days + ' días</strong><small>Consumo medio: 1,050 L/día</small></span></button>' +
+              '<button class="stat-card stat-blue" onclick="go(\'families\')"><span class="stat-icon">' + icon("users") + '</span><span class="stat-copy"><span class="stat-label">Familias registradas</span><strong>28</strong><small>124 integrantes en total</small></span></button>' +
+              '<button class="stat-card stat-' + (reservePct < 35 ? 'red' : 'green') + '" onclick="go(\'reserve\')"><span class="stat-icon">' + icon("shield") + '</span><span class="stat-copy"><span class="stat-label">Reserva esencial</span><strong>' + fmt(state.reserve) + ' L</strong><small>Puesto de salud · Protegida</small></span></button>' +
+            '</div>' +
+            '<div class="dashboard-grid">' +
+              '<section class="panel">' +
+                '<div class="panel-heading"><div><span class="eyebrow">Reservorio comunal</span><h2>Nivel actual</h2></div>' + badge(waterPct < 30 ? 'Nivel bajo' : 'Disponibilidad suficiente', waterPct < 30 ? 'red' : 'green') + '</div>' +
+                '<div class="reservoir-visual">' +
+                  '<div class="tank"><span style="height:' + waterPct + '%"><i></i><i></i><i></i></span><strong>' + waterPct + '%</strong></div>' +
+                  '<div class="reservoir-data"><strong>' + fmt(state.water) + ' <small>litros</small></strong><span>de ' + fmt(state.capacity) + ' L de capacidad</span>' + progress(waterPct, waterPct < 30 ? 'red' : 'blue') + '<small>Última medición: hoy</small></div>' +
+                '</div>' +
+              '</section>' +
+              '<section class="panel">' +
+                '<div class="panel-heading"><div><span class="eyebrow">Acciones rápidas</span><h2>¿Qué deseas hacer?</h2></div></div>' +
+                '<div class="quick-actions">' +
+                  '<button onclick="go(\'supply\')"><span>' + icon("plus") + '</span><div><strong>Registrar abastecimiento</strong><small>Ingresar agua al reservorio</small></div></button>' +
+                  '<button onclick="go(\'distribution\')"><span>' + icon("share") + '</span><div><strong>Registrar distribución</strong><small>Asignar agua a una familia</small></div></button>' +
+                  '<button onclick="go(\'families\')"><span>' + icon("users") + '</span><div><strong>Consultar familias</strong><small>Ver integrantes y cuotas</small></div></button>' +
+                '</div>' +
+              '</section>' +
+            '</div>' +
+            renderMovements(state.movements.slice(0, 4), true) +
+          '</div>';
+        }
+
+        if (s === "families") {
+          const filtered = state.families.filter(function(f) {
+            return f.name.toLowerCase().indexOf(state.searchFamily.toLowerCase()) !== -1;
+          });
+          const rows = filtered.map(function(f) {
+            return '<div class="table-row">' +
+              '<span><strong>' + f.name + '</strong><small>' + f.person + '</small></span>' +
+              '<span>' + f.sector + '</span>' +
+              '<span>' + f.members + ' personas</span>' +
+              '<span><strong>' + f.quota + ' L</strong></span>' +
+              '<span><button onclick="state.selectedFamily=\'' + f.name + '\'; go(\'distribution\')">Distribuir →</button></span>' +
+            '</div>';
+          }).join("");
+
+          return '<div class="content">' +
+            '<div class="page-title"><div class="title-group"><button class="back-button" onclick="back()">' + icon("arrow") + '</button><div><h1>Familias de la comunidad</h1><p>Consulta los integrantes y la cuota calculada para cada hogar.</p></div></div></div>' +
+            '<div class="summary-strip"><div>' + icon("users") + '<span><strong>28 familias</strong><small>registradas</small></span></div><div><span><strong>124</strong><small>integrantes</small></span></div><div><span><strong>4.4</strong><small>personas por familia</small></span></div></div>' +
+            '<section class="panel">' +
+              '<div class="table-toolbar"><h2>Listado de familias</h2><input placeholder="Buscar familia..." value="' + state.searchFamily + '" oninput="state.searchFamily=this.value; render()" /></div>' +
+              '<div class="data-table"><div class="table-row table-head"><span>Familia</span><span>Sector</span><span>Integrantes</span><span>Cuota asignada</span><span></span></div>' + rows + '</div>' +
+            '</section>' +
+          '</div>';
+        }
+
+        if (s === "supply") {
+          return '<div class="content narrow">' +
+            '<div class="page-title"><div class="title-group"><button class="back-button" onclick="back()">' + icon("arrow") + '</button><div><span class="eyebrow">Gestión de agua</span><h1>Registrar abastecimiento</h1><p>Registra el ingreso de agua al reservorio comunal.</p></div></div></div>' +
+            '<div class="form-layout">' +
+              '<section class="panel">' +
+                '<form class="form" onsubmit="handleSupply(event)">' +
+                  '<div class="form-section"><span class="step">1</span><div><h2>Datos del abastecimiento</h2><p>Completa la cantidad y la fecha del ingreso.</p></div></div>' +
+                  '<label class="field"><span>Cantidad de agua (litros)</span><div class="input-unit"><input id="supply-amount" type="number" min="1" value="5000" required /><span>L</span></div></label>' +
+                  '<label class="field"><span>Fecha del abastecimiento</span><input type="date" value="2026-11-17" required /></label>' +
+                  '<label class="field"><span>Observación (opcional)</span><textarea placeholder="Ej. Abastecimiento programado por cisterna" rows="3"></textarea></label>' +
+                  '<div class="form-actions"><button type="button" class="btn btn-secondary" onclick="back()">Cancelar</button><button type="submit" class="btn btn-primary">Guardar abastecimiento</button></div>' +
+                '</form>' +
+              '</section>' +
+              '<section class="panel review-card">' +
+                '<span class="eyebrow">Resumen</span><h2>Estado actual</h2>' +
+                '<div class="review-line"><span>Disponibilidad actual</span><strong>' + fmt(state.water) + ' L</strong></div>' +
+                '<div class="review-line"><span>Capacidad máxima</span><strong>' + fmt(state.capacity) + ' L</strong></div>' +
+                '<div class="offline-note">' + icon(state.online ? "wifi" : "offline", 18) + '<span>' + (state.online ? 'Se sincronizará inmediatamente al guardar.' : 'Modo sin conexión: se guardará localmente como pendiente.') + '</span></div>' +
+              '</section>' +
+            '</div>' +
+          '</div>';
+        }
+
+        if (s === "distribution") {
+          const fam = state.families.find(function(f) { return f.name === state.selectedFamily; }) || state.families[0];
+          const options = state.families.map(function(f) {
+            return '<option value="' + f.name + '" ' + (f.name === fam.name ? 'selected' : '') + '>' + f.name + ' (' + f.members + ' integrantes)</option>';
+          }).join("");
+
+          return '<div class="content narrow">' +
+            '<div class="page-title"><div class="title-group"><button class="back-button" onclick="back()">' + icon("arrow") + '</button><div><span class="eyebrow">Distribución equitativa</span><h1>Registrar distribución</h1><p>La cuota sugerida considera el número de integrantes del hogar.</p></div></div></div>' +
+            '<div class="alert alert-info">' + icon("droplet") + '<div><strong>' + fmt(state.water) + ' L disponibles para distribuir</strong><span>La reserva del puesto de salud (' + fmt(state.reserve) + ' L) está protegida.</span></div></div>' +
+            '<section class="panel">' +
+              '<form class="form" onsubmit="handleDistribution(event)">' +
+                '<label class="field"><span>Familia</span><select id="dist-family" onchange="state.selectedFamily=this.value; render()">' + options + '</select></label>' +
+                '<div class="calculation">' +
+                  '<div><span>Integrantes</span><strong>' + fam.members + ' personas</strong></div>' +
+                  '<div><span>Cuota sugerida</span><strong>' + fam.quota + ' L</strong></div>' +
+                  '<div><span>Cálculo</span><strong>' + Math.round(fam.quota / fam.members) + ' L / persona</strong></div>' +
+                '</div>' +
+                '<label class="field"><span>Cantidad a entregar (litros)</span><div class="input-unit"><input id="dist-amount" type="number" min="1" value="' + fam.quota + '" required /><span>L</span></div></label>' +
+                '<div class="form-actions"><button type="button" class="btn btn-secondary" onclick="back()">Cancelar</button><button type="submit" class="btn btn-primary">Guardar distribución</button></div>' +
+              '</form>' +
+            '</section>' +
+          '</div>';
+        }
+
+        if (s === "history") {
+          return '<div class="content">' +
+            '<div class="page-title"><div class="title-group"><button class="back-button" onclick="back()">' + icon("arrow") + '</button><div><h1>Historial de movimientos</h1><p>Todos los ingresos y salidas de agua registrados.</p></div></div></div>' +
+            renderMovements(state.movements) +
+          '</div>';
+        }
+
+        if (s === "reserve") {
+          return '<div class="content">' +
+            '<div class="page-title"><div class="title-group"><button class="back-button" onclick="back()">' + icon("arrow") + '</button><div><h1>Reserva de servicios esenciales</h1><p>Agua protegida para garantizar la atención del puesto de salud.</p></div></div></div>' +
+            '<div class="dashboard-grid">' +
+              '<section class="panel">' +
+                '<div class="panel-heading"><div><span class="eyebrow">Puesto de salud</span><h2>Reserva disponible</h2></div>' + badge(reservePct < 35 ? 'Atención' : 'Suficiente', reservePct < 35 ? 'red' : 'green') + '</div>' +
+                '<div class="reserve-number"><span class="stat-icon">' + icon("shield", 28) + '</span><div><strong>' + fmt(state.reserve) + ' L</strong><span>de ' + fmt(state.reserveCapacity) + ' L reservados</span></div></div>' +
+                progress(reservePct, reservePct < 35 ? 'red' : 'green') +
+                '<div class="scale"><span>0 L</span><span>' + fmt(state.reserveCapacity) + ' L</span></div>' +
+              '</section>' +
+              '<section class="panel">' +
+                '<div class="panel-heading"><h2>Datos operativos</h2></div>' +
+                '<div class="details-grid one">' +
+                  '<div><small>Capacidad protegida</small><strong>' + fmt(state.reserveCapacity) + ' L</strong></div>' +
+                  '<div><small>Consumo promedio</small><strong>160 L por día</strong></div>' +
+                  '<div><small>Duración estimada</small><strong>' + Math.floor(state.reserve / 160) + ' días</strong></div>' +
+                '</div>' +
+              '</section>' +
+            '</div>' +
+            renderMovements(state.movements.filter(function(m) { return m.detail.indexOf("Puesto") !== -1; })) +
+          '</div>';
+        }
+
+        if (s === "projection") {
+          const bars = [62, 70, 58, 76, 68, 82, 72].map(function(n, i) {
+            const labels = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
+            return '<div><span style="height:' + n + '%"></span><small>' + labels[i] + '</small></div>';
+          }).join("");
+
+          return '<div class="content">' +
+            '<div class="page-title"><div class="title-group"><button class="back-button" onclick="back()">' + icon("arrow") + '</button><div><h1>Proyección y alertas</h1><p>Estimación basada en la disponibilidad y el consumo reciente.</p></div></div></div>' +
+            '<div class="projection-hero">' +
+              '<div><span class="eyebrow">Duración estimada</span><strong>' + days + ' días</strong><span>de agua disponible al ritmo actual</span></div>' +
+              '<div class="projection-ring"><svg viewBox="0 0 120 120"><circle cx="60" cy="60" r="50"></circle><circle cx="60" cy="60" r="50" style="stroke-dasharray:' + Math.min(314, waterPct * 3.14) + ' 314"></circle></svg><span>' + waterPct + '%</span></div>' +
+            '</div>' +
+            '<section class="panel"><div class="panel-heading"><div><h2>Consumo semanal estimado</h2></div></div><div class="bar-chart">' + bars + '</div></section>' +
+          '</div>';
+        }
+
+        if (s === "sync") {
+          const syncRows = state.movements.map(function(m) {
+            const done = m.status === "Sincronizado";
+            return '<div><span class="sync-dot ' + (done ? 'done' : 'waiting') + '">' + icon(done ? "check" : "history", 16) + '</span><div><strong>' + m.type + '</strong><small>' + m.detail + ' · ' + m.date + '</small></div>' + badge(m.status, done ? 'green' : 'amber') + '</div>';
+          }).join("");
+
+          return '<div class="content narrow">' +
+            '<div class="page-title">' +
+              '<div class="title-group"><button class="back-button" onclick="back()">' + icon("arrow") + '</button><div><h1>Sincronización</h1><p>Controla los registros guardados cuando no había conexión.</p></div></div>' +
+              '<button class="btn btn-primary" onclick="syncNow()" ' + ((!state.online || pending === 0) ? 'disabled' : '') + '>' + icon("sync", 18) + ' Sincronizar ahora</button>' +
+            '</div>' +
+            '<section class="panel sync-status">' +
+              '<span class="sync-illustration ' + (state.online ? 'online' : 'offline') + '">' + icon(state.online ? "wifi" : "offline", 34) + '</span>' +
+              '<div>' + badge(state.online ? 'Con conexión' : 'Sin conexión', state.online ? 'green' : 'amber') +
+                '<h2>' + (state.online ? 'Conexión activa' : 'Trabajando sin conexión') + '</h2>' +
+                '<p>' + (state.online ? 'Los registros pendientes pueden sincronizarse ahora.' : 'Tus registros están guardados en este dispositivo y se enviarán al volver la señal.') + '</p>' +
+              '</div>' +
+            '</section>' +
+            '<section class="panel"><div class="panel-heading"><h2>Estado de registros (' + pending + ' pendientes)</h2></div><div class="sync-list">' + syncRows + '</div></section>' +
+          '</div>';
+        }
+
+        return '<div class="content narrow">' +
+          '<div class="page-title"><div class="title-group"><button class="back-button" onclick="back()">' + icon("arrow") + '</button><div><h1>Configuración</h1><p>Parámetros generales de la comunidad.</p></div></div></div>' +
+          '<section class="panel"><div class="form">' +
+            '<label class="field"><span>Nombre de la comunidad</span><input value="Comunidad Santa Rosa" /></label>' +
+            '<label class="field"><span>Capacidad del reservorio (L)</span><input value="' + state.capacity + '" /></label>' +
+            '<button class="btn btn-primary" onclick="notify(\'Configuración guardada correctamente\')">Guardar cambios</button>' +
+          '</div></section>' +
+        '</div>';
+      }
+
+      if (state.profile === "family") {
+        if (s === "family-home") {
+          return '<div class="content">' +
+            '<div class="page-title"><div class="title-group"><div><span class="eyebrow">Familia Huamán · 5 integrantes</span><h1>Hola, Luis</h1><p>Consulta el agua disponible para tu familia y comunidad.</p></div></div></div>' +
+            '<div class="alert alert-success">' + icon("check") + '<div><strong>Tu próxima entrega está programada</strong><span>Viernes · Cuota semanal asignada: 520 L</span></div>' + badge("Confirmada", "green") + '</div>' +
+            '<div class="stats-grid">' +
+              '<button class="stat-card stat-blue" onclick="go(\'availability\')"><span class="stat-icon">' + icon("droplet") + '</span><span class="stat-copy"><span class="stat-label">Agua comunitaria</span><strong>' + fmt(state.water) + ' L</strong><small>' + waterPct + '% disponible</small></span></button>' +
+              '<button class="stat-card stat-green" onclick="go(\'quota\')"><span class="stat-icon">' + icon("gauge") + '</span><span class="stat-copy"><span class="stat-label">Mi cuota</span><strong>520 L</strong><small>Para 5 integrantes</small></span></button>' +
+              '<button class="stat-card stat-blue" onclick="go(\'availability\')"><span class="stat-icon">' + icon("chart") + '</span><span class="stat-copy"><span class="stat-label">Duración estimada</span><strong>' + days + ' días</strong><small>Al consumo actual</small></span></button>' +
+              '<button class="stat-card stat-blue" onclick="go(\'family-consumption\')"><span class="stat-icon">' + icon("history") + '</span><span class="stat-copy"><span class="stat-label">Consumo familiar</span><strong>' + fmt(state.familyConsumption) + ' L</strong><small>En esta semana</small></span></button>' +
+            '</div>' +
+            '<div class="dashboard-grid">' +
+              '<section class="panel">' +
+                '<div class="panel-heading"><div><span class="eyebrow">Disponibilidad comunal</span><h2>Nivel del reservorio</h2></div>' + badge("Suficiente", "green") + '</div>' +
+                '<div class="family-gauge"><div><strong>' + waterPct + '%</strong><span>disponible</span></div>' + progress(waterPct) + '<p>El agua alcanzará aproximadamente <strong>' + days + ' días</strong>.</p></div>' +
+              '</section>' +
+              '<section class="panel">' +
+                '<div class="panel-heading"><div><span class="eyebrow">Avisos</span><h2>Información importante</h2></div><button class="text-button" onclick="go(\'notices\')">Ver todos →</button></div>' +
+                '<div class="notice"><span class="notice-icon">' + icon("bell") + '</span><div><strong>Abastecimiento completado</strong><p>El reservorio recibió 8,000 L recientemente.</p><small>Comunidad Santa Rosa</small></div></div>' +
+              '</section>' +
+            '</div>' +
+            renderMovements(state.movements.filter(function(m) { return m.detail.indexOf("Huamán") !== -1; })) +
+          '</div>';
+        }
+
+        if (s === "availability") {
+          return '<div class="content narrow">' +
+            '<div class="page-title"><div class="title-group"><button class="back-button" onclick="back()">' + icon("arrow") + '</button><div><h1>Disponibilidad de agua</h1><p>Estado actual del reservorio de la comunidad.</p></div></div></div>' +
+            '<div class="projection-hero">' +
+              '<div><span class="eyebrow">Reservorio comunal</span><strong>' + fmt(state.water) + ' L</strong><span>de ' + fmt(state.capacity) + ' litros</span>' + progress(waterPct) + '</div>' +
+              '<div class="projection-ring"><svg viewBox="0 0 120 120"><circle cx="60" cy="60" r="50"></circle><circle cx="60" cy="60" r="50" style="stroke-dasharray:' + (waterPct * 3.14) + ' 314"></circle></svg><span>' + waterPct + '%</span></div>' +
+            '</div>' +
+          '</div>';
+        }
+
+        if (s === "quota") {
+          return '<div class="content narrow">' +
+            '<div class="page-title"><div class="title-group"><button class="back-button" onclick="back()">' + icon("arrow") + '</button><div><h1>Mi cuota de agua</h1><p>Asignación calculada según las personas de tu hogar.</p></div></div></div>' +
+            '<section class="panel quota-card"><span class="quota-icon">' + icon("droplet", 32) + '</span><span>Cuota semanal asignada</span><strong>520 L</strong>' + badge("Disponible para entrega", "green") + progress(100, "green") + '</section>' +
+            '<section class="panel"><div class="details-grid">' +
+              '<div><small>Familia</small><strong>Familia Huamán</strong></div>' +
+              '<div><small>Integrantes</small><strong>5 personas</strong></div>' +
+              '<div><small>Asignación por persona</small><strong>104 L / semana</strong></div>' +
+              '<div><small>Estado</small>' + badge("Confirmada", "green") + '</div>' +
+            '</div></section>' +
+          '</div>';
+        }
+
+        if (s === "family-consumption") {
+          return '<div class="content narrow">' +
+            '<div class="page-title"><div class="title-group"><button class="back-button" onclick="back()">' + icon("arrow") + '</button><div><h1>Consumo familiar</h1><p>Registra el consumo diario de tu hogar para controlar tu cuota.</p></div></div></div>' +
+            '<div class="stats-grid three">' +
+              '<div class="stat-card stat-blue"><span class="stat-icon">' + icon("droplet") + '</span><span class="stat-copy"><span class="stat-label">Consumo semanal</span><strong>' + fmt(state.familyConsumption) + ' L</strong><small>De 520 L asignados</small></span></div>' +
+              '<div class="stat-card stat-green"><span class="stat-icon">' + icon("gauge") + '</span><span class="stat-copy"><span class="stat-label">Restante estimado</span><strong>' + Math.max(0, 520 - state.familyConsumption) + ' L</strong><small>De la cuota semanal</small></span></div>' +
+              '<div class="stat-card stat-blue"><span class="stat-icon">' + icon("users") + '</span><span class="stat-copy"><span class="stat-label">Integrantes</span><strong>5</strong><small>Personas en el hogar</small></span></div>' +
+            '</div>' +
+            '<section class="panel"><form class="form" onsubmit="handleFamilyConsumption(event)">' +
+              '<h2>Registrar consumo de hoy</h2>' +
+              '<label class="field"><span>Cantidad consumida (litros)</span><div class="input-unit"><input id="fam-cons-amount" type="number" min="1" value="80" required /><span>L</span></div></label>' +
+              '<button type="submit" class="btn btn-primary">Guardar consumo</button>' +
+            '</form></section>' +
+          '</div>';
+        }
+
+        if (s === "family-history") {
+          return '<div class="content">' +
+            '<div class="page-title"><div class="title-group"><button class="back-button" onclick="back()">' + icon("arrow") + '</button><div><h1>Historial de mi familia</h1><p>Entregas y consumos registrados para la Familia Huamán.</p></div></div></div>' +
+            renderMovements(state.movements.filter(function(m) { return m.detail.indexOf("Huamán") !== -1; })) +
+          '</div>';
+        }
+
+        return '<div class="content narrow">' +
+          '<div class="page-title"><div class="title-group"><button class="back-button" onclick="back()">' + icon("arrow") + '</button><div><h1>Avisos comunitarios</h1><p>Comunicados sobre turnos y mantenimiento.</p></div></div></div>' +
+          '<section class="panel">' +
+            '<div class="notice"><span class="notice-icon">' + icon("bell") + '</span><div>' + badge("Abastecimiento", "blue") + '<strong>Nueva entrega programada</strong><p>La distribución del Sector Norte se realizará el viernes desde las 08:00 a. m.</p></div></div>' +
+            '<div class="notice"><span class="notice-icon green">' + icon("check") + '</span><div>' + badge("Disponibilidad", "green") + '<strong>Nivel estable del reservorio</strong><p>La comunidad cuenta con agua para aproximadamente ' + days + ' días.</p></div></div>' +
+          '</section>' +
+        '</div>';
+      }
+
+      const status = reservePct < 30 ? "red" : reservePct < 55 ? "amber" : "green";
+      const statusText = status === "red" ? "Reserva baja" : status === "amber" ? "Atención" : "Suficiente";
+
+      if (s === "service-home") {
+        return '<div class="content">' +
+          '<div class="page-title"><div class="title-group"><div><span class="eyebrow">Puesto de Salud Santa Rosa</span><h1>Panel del servicio esencial</h1><p>Monitorea la reserva prioritaria para la atención de la comunidad.</p></div></div></div>' +
+          '<div class="stats-grid">' +
+            '<button class="stat-card stat-' + status + '" onclick="go(\'my-reserve\')"><span class="stat-icon">' + icon("shield") + '</span><span class="stat-copy"><span class="stat-label">Mi reserva</span><strong>' + fmt(state.reserve) + ' L</strong><small>' + reservePct + '% disponible</small></span></button>' +
+            '<button class="stat-card stat-' + status + '"><span class="stat-icon">' + icon("check") + '</span><span class="stat-copy"><span class="stat-label">Estado</span><strong>' + statusText + '</strong><small>Reserva prioritaria</small></span></button>' +
+            '<button class="stat-card stat-blue"><span class="stat-icon">' + icon("gauge") + '</span><span class="stat-copy"><span class="stat-label">Duración estimada</span><strong>' + Math.floor(state.reserve / 160) + ' días</strong><small>Consumo medio: 160 L/día</small></span></button>' +
+            '<button class="stat-card stat-blue" onclick="go(\'service-consumption\')"><span class="stat-icon">' + icon("chart") + '</span><span class="stat-copy"><span class="stat-label">Consumo semanal</span><strong>680 L</strong><small>Atención e higiene</small></span></button>' +
+          '</div>' +
+          '<div class="dashboard-grid">' +
+            '<section class="panel">' +
+              '<div class="panel-heading"><div><span class="eyebrow">Reserva protegida</span><h2>Nivel actual</h2></div>' + badge(statusText, status) + '</div>' +
+              '<div class="reserve-number"><span class="stat-icon">' + icon("shield", 28) + '</span><div><strong>' + fmt(state.reserve) + ' L</strong><span>de ' + fmt(state.reserveCapacity) + ' L de capacidad</span></div></div>' +
+              progress(reservePct, status) +
+            '</section>' +
+            '<section class="panel">' +
+              '<div class="panel-heading"><div><span class="eyebrow">Acciones</span><h2>Gestión del servicio</h2></div></div>' +
+              '<div class="quick-actions">' +
+                '<button onclick="go(\'service-consumption\')"><span>' + icon("droplet") + '</span><div><strong>Registrar consumo</strong><small>Actualizar la reserva disponible</small></div></button>' +
+                '<button onclick="go(\'request\')"><span>' + icon("send") + '</span><div><strong>Solicitar abastecimiento</strong><small>Informar una necesidad prioritaria</small></div></button>' +
+              '</div>' +
+            '</section>' +
+          '</div>' +
+          renderMovements(state.movements.filter(function(m) { return m.detail.indexOf("Puesto") !== -1; })) +
+        '</div>';
+      }
+
+      if (s === "my-reserve") {
+        return '<div class="content narrow">' +
+          '<div class="page-title"><div class="title-group"><button class="back-button" onclick="back()">' + icon("arrow") + '</button><div><h1>Mi reserva</h1><p>Agua protegida para el puesto de salud.</p></div></div></div>' +
+          '<div class="projection-hero">' +
+            '<div><span class="eyebrow">Reserva disponible</span><strong>' + fmt(state.reserve) + ' L</strong><span>de ' + fmt(state.reserveCapacity) + ' litros protegidos</span>' + progress(reservePct, status) + '</div>' +
+            '<div class="projection-ring"><svg viewBox="0 0 120 120"><circle cx="60" cy="60" r="50"></circle><circle cx="60" cy="60" r="50" style="stroke-dasharray:' + (reservePct * 3.14) + ' 314"></circle></svg><span>' + reservePct + '%</span></div>' +
+          '</div>' +
+        '</div>';
+      }
+
+      if (s === "service-consumption") {
+        return '<div class="content narrow">' +
+          '<div class="page-title"><div class="title-group"><button class="back-button" onclick="back()">' + icon("arrow") + '</button><div><span class="eyebrow">Puesto de salud</span><h1>Registrar consumo</h1><p>Actualiza la reserva indicando el uso realizado.</p></div></div></div>' +
+          '<div class="alert alert-info">' + icon("shield") + '<div><strong>Reserva actual: ' + fmt(state.reserve) + ' L</strong><span>' + reservePct + '% de la capacidad protegida.</span></div></div>' +
+          '<section class="panel"><form class="form" onsubmit="handleServiceConsumption(event)">' +
+            '<label class="field"><span>Cantidad consumida (litros)</span><div class="input-unit"><input id="srv-cons-amount" type="number" min="1" value="120" required /><span>L</span></div></label>' +
+            '<label class="field"><span>Motivo del consumo</span><select id="srv-cons-reason"><option>Atención de pacientes</option><option>Higiene</option><option>Limpieza</option></select></label>' +
+            '<div class="form-actions"><button type="button" class="btn btn-secondary" onclick="back()">Cancelar</button><button type="submit" class="btn btn-primary">Guardar consumo</button></div>' +
+          '</form></section>' +
+        '</div>';
+      }
+
+      if (s === "request") {
+        return '<div class="content narrow">' +
+          '<div class="page-title"><div class="title-group"><button class="back-button" onclick="back()">' + icon("arrow") + '</button><div><span class="eyebrow">Abastecimiento prioritario</span><h1>Solicitar abastecimiento</h1><p>Informa al líder comunitario la necesidad del puesto de salud.</p></div></div></div>' +
+          '<section class="panel"><form class="form" onsubmit="handleRequestSupply(event)">' +
+            '<label class="field"><span>Cantidad solicitada (litros)</span><div class="input-unit"><input id="req-amount" type="number" min="1" value="1500" required /><span>L</span></div></label>' +
+            '<label class="field"><span>Motivo de la solicitud</span><textarea id="req-reason" rows="3">Garantizar la atención de pacientes</textarea></label>' +
+            '<label class="field"><span>Prioridad</span><select><option>Alta</option><option>Normal</option></select></label>' +
+            '<div class="form-actions"><button type="button" class="btn btn-secondary" onclick="back()">Cancelar</button><button type="submit" class="btn btn-danger">' + icon("send", 18) + ' Solicitar abastecimiento</button></div>' +
+          '</form></section>' +
+        '</div>';
+      }
+
+      return '<div class="content">' +
+        '<div class="page-title"><div class="title-group"><button class="back-button" onclick="back()">' + icon("arrow") + '</button><div><h1>Historial del puesto de salud</h1><p>Consumos y solicitudes de abastecimiento.</p></div></div></div>' +
+        renderMovements(state.movements.filter(function(m) { return m.detail.indexOf("Puesto") !== -1; })) +
+      '</div>';
+    }
+
+    function enterProfile(p) {
+      state.profile = p;
+      state.loggedIn = true;
+      state.trail = [];
+      state.screen = p === "admin" ? "dashboard" : p === "family" ? "family-home" : "service-home";
+      render();
+    }
+
+    function toggleOnline() {
+      state.online = !state.online;
+      if (state.online) {
+        state.movements.forEach(function(m) { m.status = "Sincronizado"; });
+        notify("Conexión recuperada · Registros sincronizados");
+      } else {
+        notify("Modo sin conexión activado");
+      }
+      render();
+    }
+
+    function syncNow() {
+      if (!state.online) return;
+      state.movements.forEach(function(m) { m.status = "Sincronizado"; });
+      notify("Todos los registros están sincronizados");
+      render();
+    }
+
+    function handleSupply(e) {
+      e.preventDefault();
+      const val = Number(document.getElementById("supply-amount").value);
+      if (val <= 0) return notify("Ingresa una cantidad válida");
+      state.water = Math.min(state.capacity, state.water + val);
+      addMovement("Abastecimiento", "Ingreso al reservorio", val, "in");
+      notify(state.online ? "Abastecimiento registrado correctamente" : "Guardado localmente · Pendiente de sincronizar");
+      go("dashboard");
+    }
+
+    function handleDistribution(e) {
+      e.preventDefault();
+      const fam = document.getElementById("dist-family").value;
+      const val = Number(document.getElementById("dist-amount").value);
+      if (val > state.water) return notify("La cantidad supera el agua disponible");
+      state.water -= val;
+      addMovement("Distribución", fam, val, "out");
+      notify(state.online ? "Distribución registrada correctamente" : "Guardado localmente · Pendiente de sincronizar");
+      go("dashboard");
+    }
+
+    function handleFamilyConsumption(e) {
+      e.preventDefault();
+      const val = Number(document.getElementById("fam-cons-amount").value);
+      state.familyConsumption += val;
+      addMovement("Consumo familiar", "Familia Huamán", val, "neutral");
+      notify(state.online ? "Consumo familiar registrado" : "Guardado localmente · Pendiente de sincronizar");
+      go("family-home");
+    }
+
+    function handleServiceConsumption(e) {
+      e.preventDefault();
+      const val = Number(document.getElementById("srv-cons-amount").value);
+      const reason = document.getElementById("srv-cons-reason").value;
+      if (val > state.reserve) return notify("La cantidad supera la reserva disponible");
+      state.reserve -= val;
+      addMovement("Consumo esencial", "Puesto de salud · " + reason, val, "out");
+      notify(state.online ? "Consumo registrado correctamente" : "Guardado localmente · Pendiente de sincronizar");
+      go("service-home");
+    }
+
+    function handleRequestSupply(e) {
+      e.preventDefault();
+      const val = Number(document.getElementById("req-amount").value);
+      const reason = document.getElementById("req-reason").value;
+      addMovement("Solicitud de abastecimiento", "Puesto de salud · " + reason, val, "neutral");
+      notify(state.online ? "Solicitud enviada correctamente" : "Solicitud guardada · Pendiente de sincronizar");
+      go("service-history");
+    }
+
+    function render() {
+      const profiles = {
+        admin: { initials: "MC", name: "María Condori", role: "Líder comunitario" },
+        family: { initials: "LH", name: "Luis Huamán", role: "Jefe de familia" },
+        service: { initials: "PS", name: "Puesto de Salud", role: "Servicio esencial" }
+      };
+      const profileInfo = profiles[state.profile];
+      const navItems = state.profile ? NAVS[state.profile] : [];
+
+      let mainBody = "";
+      if (!state.loggedIn) {
+        mainBody = renderAccess();
+      } else {
+        const navButtons = navItems.map(function(item) {
+          return '<button class="' + (state.screen === item[0] ? 'active' : '') + '" onclick="go(\'' + item[0] + '\')">' + icon(item[2]) + '<span>' + item[1] + '</span></button>';
+        }).join("");
+
+        mainBody = '<div class="product-shell">' +
+          '<aside class="sidebar ' + (state.mobileMenu ? 'open' : '') + '">' +
+            '<div class="brand"><span class="brand-mark">' + icon("droplet") + '</span><div><strong>AquaComunidad</strong><small>Agua que nos une</small></div></div>' +
+            '<div class="profile-chip"><span class="avatar">' + profileInfo.initials + '</span><div><strong>' + profileInfo.name + '</strong><small>' + profileInfo.role + '</small></div></div>' +
+            '<nav>' + navButtons + '</nav>' +
+            '<button class="logout" onclick="state.loggedIn=false; state.profile=null; state.accessStep=\'welcome\'; render()">' + icon("logout") + '<span>Cerrar sesión</span></button>' +
+          '</aside>' +
+          (state.mobileMenu ? '<button class="scrim" onclick="state.mobileMenu=false; render()"></button>' : '') +
+          '<main class="main">' +
+            '<div class="mobile-header">' +
+              '<button onclick="state.mobileMenu=true; render()">' + icon("menu") + '</button>' +
+              '<strong>AquaComunidad</strong>' +
+              '<span class="status-orb ' + (state.online ? 'green' : 'amber') + '"></span>' +
+            '</div>' +
+            renderScreen() +
+          '</main>' +
+        '</div>';
+      }
+
+      document.getElementById("root").innerHTML =
+        '<div class="app ' + (state.mode === "mobile" ? "forced-mobile" : "") + '">' +
+          '<header class="prototype-bar">' +
+            '<div class="brand-mini"><span class="brand-mark">' + icon("droplet", 17) + '</span><span>AquaComunidad</span></div>' +
+            '<div class="mode-switch">' +
+              '<button class="' + (state.mode === "web" ? "active" : "") + '" onclick="state.mode=\'web\'; render()">WEB</button>' +
+              '<button class="' + (state.mode === "mobile" ? "active" : "") + '" onclick="state.mode=\'mobile\'; render()">MOBILE</button>' +
+            '</div>' +
+            '<div class="connection ' + (state.online ? "is-online" : "is-offline") + '">' +
+              icon(state.online ? "wifi" : "offline", 17) +
+              '<span>' + (state.online ? "Con conexión" : "Sin conexión") + '</span>' +
+              '<button onclick="toggleOnline()" title="Cambiar estado de conexión"><span></span></button>' +
+            '</div>' +
+          '</header>' +
+          mainBody +
+          (state.toast ? '<div class="toast"><span>' + icon("check", 18) + '</span>' + state.toast + '</div>' : '') +
+        '</div>';
+    }
+
+    render();
+  </script>
+</body>
+</html>
